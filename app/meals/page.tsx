@@ -31,6 +31,7 @@ export default function MealsPage() {
   const [form, setForm] = useState(emptyForm)
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const date = today()
 
   useEffect(() => {
@@ -38,7 +39,11 @@ export default function MealsPage() {
   }, [date])
 
   async function load() {
-    const { data } = await supabase.from('meals').select('*').eq('date', date).order('logged_at')
+    const { data, error } = await supabase.from('meals').select('*').eq('date', date).order('logged_at')
+    if (error) {
+      setError(error.message)
+      return
+    }
     setMeals((data as Meal[] | null) ?? [])
   }
 
@@ -51,6 +56,7 @@ export default function MealsPage() {
 
   async function saveMeal() {
     if (!form.food_name.trim()) return
+    setError('')
     setSaving(true)
     const payload = {
       date,
@@ -68,11 +74,17 @@ export default function MealsPage() {
       triggers: [form.reflux && 'reflux', form.pressure && 'pressure', form.bloating && 'bloating'].filter(Boolean),
     }
 
-    const { data } = await supabase.from('meals').insert(payload).select().single()
-    setMeals((current) => [...current, data as Meal].sort((a, b) => (a.logged_at ?? '').localeCompare(b.logged_at ?? '')))
-    setForm(emptyForm)
-    setSearch('')
-    setSaving(false)
+    try {
+      const { data, error } = await supabase.from('meals').insert(payload).select().single()
+      if (error) throw error
+      setMeals((current) => [...current, data as Meal].sort((a, b) => (a.logged_at ?? '').localeCompare(b.logged_at ?? '')))
+      setForm(emptyForm)
+      setSearch('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save meal.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function deleteMeal(id: string) {
@@ -98,6 +110,11 @@ export default function MealsPage() {
           ))}
         </div>
         <div className="mt-4 space-y-3">
+          {error && (
+            <div className="rounded-[18px] border border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              {error}
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs uppercase tracking-[0.22em] text-slate-400">Food name</label>
             <input
