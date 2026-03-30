@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm --version)",
-      "Skill(claude-api)",
-      "Skill(claude-api:*)"
-    ]
-  }
-}
